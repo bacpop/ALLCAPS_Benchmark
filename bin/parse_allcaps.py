@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Parse TriHead merged_query_results.csv into standardized CSV format.
+"""Parse AllCaps merged_query_results.csv into standardized CSV format.
 
-Usage: parse_trihead.py <merged_query_results.csv>
+Usage: parse_allcaps.py <merged_query_results.csv>
 Outputs to stdout: sample_id,tool,predicted_serotype
 """
 import csv
@@ -25,7 +25,7 @@ def main():
             # Prediction column
             pred = row.get("pred_serotype", row.get("pred_argmax", ""))
             if sample_id and pred:
-                writer.writerow([sample_id, "TriHead", pred])
+                writer.writerow([sample_id, "AllCaps", pred])
 
 
 if __name__ == "__main__":

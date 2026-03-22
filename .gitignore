@@ -1,6 +1,16 @@
+# Nextflow and Singularity
 tools/
 singularity-cache/
 work/
 .nextflow/
 .nextflow.log*
 results/
+
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+

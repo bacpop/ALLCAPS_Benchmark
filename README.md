@@ -6,7 +6,7 @@ Nextflow pipeline to benchmark multiple *S. pneumoniae* in-silico serotyping too
 
 | Tool | Input | Execution | Status |
 |------|-------|-----------|--------|
-| **TriHead** (yours) | FASTA (contigs) | Conda (`ebi_env`) | ✅ Implemented |
+| **AllCaps** (ours) | FASTA (contigs) | Conda (`ebi_env`) | ✅ Implemented |
 | **SeroBA v2** | Paired FASTQ | Singularity (`sangerbentleygroup/seroba`) | ✅ Implemented |
 | **PneumoKITy** | FASTA (assembly) | Conda env | ✅ Implemented |
 | **PfaSTer** | FASTA | Conda env | ✅ Implemented |
@@ -68,13 +68,13 @@ nextflow run main.nf \
     --labels labels.csv \
     --outdir results/
 
-# Include your TriHead tool
+# Include our AllCaps tool
 nextflow run main.nf \
     -profile slurm \
     --input samplesheet.csv \
     --labels labels.csv \
-    --trihead_model /path/to/transformer_model.pth \
-    --trihead_repo  /path/to/pneumococcal-serotyping \
+    --allcaps_model /path/to/transformer_model.pth \
+    --allcaps_repo  /path/to/pneumococcal-serotyping \
     --outdir results/
 
 # Stub / dry run (no tools executed, tests pipeline logic)
@@ -90,7 +90,7 @@ nextflow run main.nf \
     --input samplesheet.csv \
     --labels labels.csv \
     --run_seroba false \
-    --run_trihead false
+    --run_allcaps false
 ```
 
 ## Multi-FASTA splitting
@@ -119,8 +119,8 @@ results/
 │   ├── PneumoKITy_report.txt
 │   ├── PfaSTer_confusion_matrix.csv
 │   ├── PfaSTer_report.txt
-│   ├── TriHead_confusion_matrix.csv
-│   └── TriHead_report.txt
+│   ├── AllCaps_confusion_matrix.csv
+│   └── AllCaps_report.txt
 ├── pipeline_report.html
 ├── timeline.html
 └── trace.txt
@@ -145,7 +145,7 @@ serotype-benchmark/
 │   ├── seroba.nf            # SeroBA v2
 │   ├── pneumokity.nf        # PneumoKITy
 │   ├── pfaster.nf           # PfaSTer
-│   ├── trihead.nf           # TriHead (your tool)
+│   ├── allcaps.nf           # AllCaps (our tool)
 │   ├── pneumocat.nf         # PneumoCaT (placeholder)
 │   ├── serocall.nf          # SeroCall (placeholder)
 │   └── pneumotyper.nf       # Pneumo-Typer (placeholder)
@@ -153,7 +153,7 @@ serotype-benchmark/
 │   ├── parse_seroba.py
 │   ├── parse_pneumokity.py
 │   ├── parse_pfaster.py
-│   ├── parse_trihead.py
+│   ├── parse_allcaps.py
 │   ├── parse_pneumocat.py
 │   ├── parse_serocall.py
 │   ├── parse_pneumotyper.py
@@ -179,4 +179,4 @@ Different tools use different naming conventions (e.g., `01` vs `1`, `untypable`
 - Nextflow >= 23.04
 - Singularity / Apptainer (for SeroBA container)
 - Conda / Micromamba (for PneumoKITy, PfaSTer)
-- Python 3.7+ with: pandas, numpy, scikit-learn, matplotlib (optional, for plots), seaborn (optional)
+- Python 3.7+ with: pandas, numpy, scikit-learn, matplotlib and seaborn (optional, for plots)

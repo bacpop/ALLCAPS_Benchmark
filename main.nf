@@ -5,7 +5,7 @@
  *  Pneumococcal Serotyping Benchmark Pipeline
  * ══════════════════════════════════════════════════════════════
  *
- *  Compare SeroBA v2, PneumoKITy, PfaSTer, TriHead, and
+ *  Compare SeroBA v2, PneumoKITy, PfaSTer, AllCaps, and
  *  (placeholder) PneumoCaT, SeroCall, Pneumo-Typer against a
  *  common test set.  Produces per-tool confusion matrices and
  *  a cross-tool comparison report.
@@ -26,7 +26,7 @@ nextflow.enable.dsl = 2
 include { SEROBA;           SEROBA_PARSE           } from './modules/seroba'
 include { PNEUMOKITY;       PNEUMOKITY_PARSE       } from './modules/pneumokity'
 include { PFASTER;          PFASTER_PARSE          } from './modules/pfaster'
-include { TRIHEAD; TRIHEAD_EVAL; TRIHEAD_PARSE     } from './modules/trihead'
+include { ALLCAPS; ALLCAPS_EVAL; ALLCAPS_PARSE     } from './modules/allcaps'
 include { PNEUMOCAT;        PNEUMOCAT_PARSE        } from './modules/pneumocat'
 include { SEROCALL;         SEROCALL_PARSE         } from './modules/serocall'
 include { PNEUMOTYPER;      PNEUMOTYPER_PARSE      } from './modules/pneumotyper'
@@ -46,15 +46,15 @@ def helpMessage() {
 
     Optional:
       --multifasta      PATH   Multi-FASTA file to split into per-sample FASTAs
-      --trihead_model   PATH   TriHead .pth model checkpoint
-      --trihead_repo    PATH   Path to pneumococcal-serotyping repo root
+      --allcaps_model   PATH   AllCaps .pth model checkpoint
+      --allcaps_repo    PATH   Path to pneumococcal-serotyping repo root
       --outdir          PATH   Output directory [default: results]
 
     Tool toggles (set --run_<tool>=false to skip):
       --run_seroba      [default: true]
       --run_pneumokity  [default: true]
       --run_pfaster     [default: true]
-      --run_trihead     [default: true]
+      --run_allcaps     [default: true]
       --run_pneumocat   [default: false]  (placeholder)
       --run_serocall    [default: false]  (placeholder)
       --run_pneumotyper [default: false]  (placeholder)
@@ -243,21 +243,21 @@ workflow {
         ch_parsed = ch_parsed.mix(PFASTER_PARSE.out.parsed)
     }
 
-    // ── TriHead (FASTA, batch mode) ──────────────────────────
-    if (params.run_trihead && params.trihead_model && params.trihead_repo) {
+    // ── AllCaps (FASTA, batch mode) ──────────────────────────
+    if (params.run_allcaps && params.allcaps_model && params.allcaps_repo) {
         // Collect all FASTAs into one file for batch processing
         ch_fasta
             .map { sid, fasta -> fasta }
             .collectFile(name: 'all_queries.fasta', newLine: true)
-            .set { ch_trihead_fasta }
+            .set { ch_allcaps_fasta }
 
-        ch_model = Channel.value(file(params.trihead_model))
-        ch_repo  = Channel.value(file(params.trihead_repo))
+        ch_model = Channel.value(file(params.allcaps_model))
+        ch_repo  = Channel.value(file(params.allcaps_repo))
 
-        TRIHEAD(ch_trihead_fasta, ch_model, ch_repo)
-        TRIHEAD_EVAL(TRIHEAD.out.predictions, ch_labels, ch_repo)
-        TRIHEAD_PARSE(TRIHEAD_EVAL.out.merged)
-        ch_parsed = ch_parsed.mix(TRIHEAD_PARSE.out.parsed)
+        ALLCAPS(ch_allcaps_fasta, ch_model, ch_repo)
+        ALLCAPS_EVAL(ALLCAPS.out.predictions, ch_labels, ch_repo)
+        ALLCAPS_PARSE(ALLCAPS_EVAL.out.merged)
+        ch_parsed = ch_parsed.mix(ALLCAPS_PARSE.out.parsed)
     }
 
     // ── PneumoCaT (FASTQ, placeholder) ───────────────────────
