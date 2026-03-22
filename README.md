@@ -114,7 +114,7 @@ results/
 │   ├── benchmark_summary.tsv        # Cross-tool comparison table
 │   ├── SeroBA_confusion_matrix.csv
 │   ├── SeroBA_report.txt
-│   ├── SeroBA_confusion_matrix.png  # (if matplotlib available)
+│   ├── SeroBA_confusion_matrix.pdf
 │   ├── PneumoKITy_confusion_matrix.csv
 │   ├── PneumoKITy_report.txt
 │   ├── PfaSTer_confusion_matrix.csv

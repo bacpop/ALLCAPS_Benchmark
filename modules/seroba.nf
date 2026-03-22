@@ -21,19 +21,29 @@ process SEROBA_BATCH {
 
     output:
     path "seroba_parsed.csv", emit: parsed
+    path "errors.log", optional: true, emit: errors
 
     script:
     """
     echo "sample_id,tool,predicted_serotype" > seroba_parsed.csv
+    ERRORS=0
     while IFS=\$'\\t' read -r sample_id fq1 fq2; do
-        seroba runSerotyping \\
+        if seroba runSerotyping \\
             /seroba/database \\
             "\${fq1}" \\
             "\${fq2}" \\
-            "\${sample_id}_result"
-        parse_seroba.py "\${sample_id}" "\${sample_id}_result/pred.tsv" \\
-            | tail -n +2 >> seroba_parsed.csv
+            "\${sample_id}_result" 2>>errors.log; then
+            parse_seroba.py "\${sample_id}" "\${sample_id}_result/pred.tsv" \\
+                | tail -n +2 >> seroba_parsed.csv
+        else
+            echo "FAILED: \${sample_id} (exit \$?)" >> errors.log
+            echo "\${sample_id},SeroBA,FAILED" >> seroba_parsed.csv
+            ERRORS=\$((ERRORS + 1))
+        fi
     done < ${manifest}
+    if [ \$ERRORS -gt 0 ]; then
+        echo "\${ERRORS} sample(s) failed — see errors.log" >&2
+    fi
     """
 
     stub:

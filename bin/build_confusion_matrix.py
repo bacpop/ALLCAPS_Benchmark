@@ -14,7 +14,7 @@ Inputs:
 Outputs (per tool):
     <tool>_confusion_matrix.csv
     <tool>_report.txt
-    <tool>_confusion_matrix.png  (if matplotlib available)
+    <tool>_confusion_matrix.pdf  (if matplotlib available)
 
 Aggregated:
     benchmark_summary.tsv
@@ -102,7 +102,7 @@ def make_confusion_plot(cm_df: pd.DataFrame, tool: str, outdir: str):
     ax.set_ylabel("True")
     ax.set_title(f"{tool} — Confusion Matrix")
     plt.tight_layout()
-    plt.savefig(os.path.join(outdir, f"{tool}_confusion_matrix.png"), dpi=150)
+    plt.savefig(os.path.join(outdir, f"{tool}_confusion_matrix.pdf"), dpi=150)
     plt.close()
 
 

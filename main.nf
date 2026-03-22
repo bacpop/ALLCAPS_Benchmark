@@ -153,14 +153,15 @@ process COLLECT_PREDICTIONS {
     publishDir "${params.outdir}/predictions", mode: 'copy'
 
     input:
-    path '*.csv'
+    path csv_files
 
     output:
     path "all_predictions.csv", emit: predictions
 
     script:
+    def input_csvs = csv_files instanceof List ? csv_files.join(' ') : csv_files
     """
-    collect_predictions.py *.csv > all_predictions.csv
+    collect_predictions.py ${input_csvs} > all_predictions.csv
     """
 
     stub:
@@ -181,7 +182,7 @@ process BUILD_REPORT {
 
     output:
     path "*.csv",            emit: matrices
-    path "*.png", optional: true, emit: plots
+    path "*.pdf", optional: true, emit: plots
     path "benchmark_summary.tsv", emit: summary
 
     script:
