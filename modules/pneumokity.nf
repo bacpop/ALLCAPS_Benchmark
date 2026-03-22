@@ -21,20 +21,30 @@ process PNEUMOKITY_BATCH {
 
     output:
     path "pneumokity_parsed.csv", emit: parsed
+    path "errors.log", optional: true, emit: errors
 
     script:
     """
     echo "sample_id,tool,predicted_serotype" > pneumokity_parsed.csv
+    ERRORS=0
     while IFS=\$'\\t' read -r sample_id fasta_name; do
-        python ${pneumokity_dir}/pneumokity.py pure \\
+        if python ${pneumokity_dir}/pneumokity.py pure \\
             -a "\${fasta_name}" \\
             -o "\${sample_id}_output" \\
             -s "\${sample_id}" \\
-            -t ${task.cpus}
-        parse_pneumokity.py "\${sample_id}" \\
-            "\${sample_id}_output/pneumo_capsular_typing/\${sample_id}_result_data.csv" \\
-            | tail -n +2 >> pneumokity_parsed.csv
+            -t ${task.cpus} 2>>errors.log; then
+            parse_pneumokity.py "\${sample_id}" \\
+                "\${sample_id}_output/pneumo_capsular_typing/\${sample_id}_result_data.csv" \\
+                | tail -n +2 >> pneumokity_parsed.csv
+        else
+            echo "FAILED: \${sample_id} (exit \$?)" >> errors.log
+            echo "\${sample_id},PneumoKITy,FAILED" >> pneumokity_parsed.csv
+            ERRORS=\$((ERRORS + 1))
+        fi
     done < ${manifest}
+    if [ \$ERRORS -gt 0 ]; then
+        echo "\${ERRORS} sample(s) failed — see errors.log" >&2
+    fi
     """
 
     stub:

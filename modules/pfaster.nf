@@ -21,18 +21,28 @@ process PFASTER_BATCH {
 
     output:
     path "pfaster_parsed.csv", emit: parsed
+    path "errors.log", optional: true, emit: errors
 
     script:
     """
     echo "sample_id,tool,predicted_serotype" > pfaster_parsed.csv
+    ERRORS=0
     while IFS=\$'\\t' read -r sample_id fasta_name; do
         mkdir -p "\${sample_id}_output"
-        python ${pfaster_dir}/pfaster.py \\
+        if python ${pfaster_dir}/pfaster.py \\
             -f "\${fasta_name}" \\
-            -o "\${sample_id}_output"
-        parse_pfaster.py "\${sample_id}" "\${sample_id}_output" \\
-            | tail -n +2 >> pfaster_parsed.csv
+            -o "\${sample_id}_output" 2>>errors.log; then
+            parse_pfaster.py "\${sample_id}" "\${sample_id}_output" \\
+                | tail -n +2 >> pfaster_parsed.csv
+        else
+            echo "FAILED: \${sample_id} (exit \$?)" >> errors.log
+            echo "\${sample_id},PfaSTer,FAILED" >> pfaster_parsed.csv
+            ERRORS=\$((ERRORS + 1))
+        fi
     done < ${manifest}
+    if [ \$ERRORS -gt 0 ]; then
+        echo "\${ERRORS} sample(s) failed — see errors.log" >&2
+    fi
     """
 
     stub:
