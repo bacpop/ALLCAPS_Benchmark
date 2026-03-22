@@ -1,0 +1,3 @@
+sample_id,fasta,fastq_1,fastq_2
+SAMPLE001,/path/to/fastas/SAMPLE001.fasta,/path/to/fastqs/SAMPLE001_1.fastq.gz,/path/to/fastqs/SAMPLE001_2.fastq.gz
+SAMPLE002,/path/to/fastas/SAMPLE002.fasta,/path/to/fastqs/SAMPLE002_1.fastq.gz,/path/to/fastqs/SAMPLE002_2.fastq.gz

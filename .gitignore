@@ -1,0 +1,6 @@
+tools/
+singularity-cache/
+work/
+.nextflow/
+.nextflow.log*
+results/
