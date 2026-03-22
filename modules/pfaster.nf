@@ -1,56 +1,43 @@
 /*
  * PfaSTer — FASTA-based serotype calling (Pfizer)
+ * BATCH MODE: processes all samples in a single job
  *
- * Input:  FASTA only
+ * Input:  manifest TSV + all FASTA files staged flat
  * Install: conda env from their environment.yml
  */
 
-process PFASTER {
-    tag "$sample_id"
-    label 'process_low'
+process PFASTER_BATCH {
+    tag "pfaster_batch"
+    label 'process_batch'
 
     conda "${projectDir}/envs/pfaster.yml"
 
+    publishDir "${params.outdir}/predictions", mode: 'copy'
+
     input:
-    tuple val(sample_id), path(fasta)
-    path pfaster_dir  // cloned pfaster repo
+    path manifest
+    path fastas
+    path pfaster_dir
 
     output:
-    tuple val(sample_id), path("${sample_id}_output"), emit: predictions
+    path "pfaster_parsed.csv", emit: parsed
 
     script:
     """
-    mkdir -p ${sample_id}_output
-    python ${pfaster_dir}/pfaster.py \\
-        -f ${fasta} \\
-        -o ${sample_id}_output
+    echo "sample_id,tool,predicted_serotype" > pfaster_parsed.csv
+    while IFS=\$'\\t' read -r sample_id fasta_name; do
+        mkdir -p "\${sample_id}_output"
+        python ${pfaster_dir}/pfaster.py \\
+            -f "\${fasta_name}" \\
+            -o "\${sample_id}_output"
+        parse_pfaster.py "\${sample_id}" "\${sample_id}_output" \\
+            | tail -n +2 >> pfaster_parsed.csv
+    done < ${manifest}
     """
 
     stub:
     """
-    mkdir -p ${sample_id}_output
-    echo "Serotype: 19F" > ${sample_id}_output/result.txt
-    """
-}
-
-process PFASTER_PARSE {
-    tag "$sample_id"
-    label 'process_low'
-
-    input:
-    tuple val(sample_id), path(output_dir)
-
-    output:
-    path "${sample_id}.pfaster.csv", emit: parsed
-
-    script:
-    """
-    parse_pfaster.py ${sample_id} ${output_dir} > ${sample_id}.pfaster.csv
-    """
-
-    stub:
-    """
-    echo "sample_id,tool,predicted_serotype" > ${sample_id}.pfaster.csv
-    echo "${sample_id},PfaSTer,19F" >> ${sample_id}.pfaster.csv
+    echo "sample_id,tool,predicted_serotype" > pfaster_parsed.csv
+    echo "SAMPLE001,PfaSTer,19F" >> pfaster_parsed.csv
     """
 }

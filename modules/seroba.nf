@@ -1,57 +1,44 @@
 /*
  * SeroBA v2 — k-mer-based serotyping from Illumina paired reads
+ * BATCH MODE: processes all samples in a single job
  *
  * Container: docker://sangerbentleygroup/seroba
- * Input:     paired FASTQ
- * Output:    pred.tsv per sample
+ * Input:     manifest TSV (sample_id, fq1, fq2) + all FASTQ files staged flat
+ * Output:    single parsed CSV for all samples
  */
 
-process SEROBA {
-    tag "$sample_id"
-    label 'process_medium'
+process SEROBA_BATCH {
+    tag "seroba_batch"
+    label 'process_batch'
 
     container 'docker://sangerbentleygroup/seroba'
 
+    publishDir "${params.outdir}/predictions", mode: 'copy'
+
     input:
-    tuple val(sample_id), path(fastq_1), path(fastq_2)
+    path manifest
+    path fastqs
 
     output:
-    tuple val(sample_id), path("${sample_id}_result/pred.tsv"), emit: predictions
+    path "seroba_parsed.csv", emit: parsed
 
     script:
     """
-    seroba runSerotyping \\
-        /seroba/database \\
-        ${fastq_1} \\
-        ${fastq_2} \\
-        ${sample_id}_result
+    echo "sample_id,tool,predicted_serotype" > seroba_parsed.csv
+    while IFS=\$'\\t' read -r sample_id fq1 fq2; do
+        seroba runSerotyping \\
+            /seroba/database \\
+            "\${fq1}" \\
+            "\${fq2}" \\
+            "\${sample_id}_result"
+        parse_seroba.py "\${sample_id}" "\${sample_id}_result/pred.tsv" \\
+            | tail -n +2 >> seroba_parsed.csv
+    done < ${manifest}
     """
 
     stub:
     """
-    mkdir -p ${sample_id}_result
-    printf 'Predicted Serotype:\\t19F\\n' > ${sample_id}_result/pred.tsv
-    """
-}
-
-process SEROBA_PARSE {
-    tag "$sample_id"
-    label 'process_low'
-
-    input:
-    tuple val(sample_id), path(pred_tsv)
-
-    output:
-    path "${sample_id}.seroba.csv", emit: parsed
-
-    script:
-    """
-    parse_seroba.py ${sample_id} ${pred_tsv} > ${sample_id}.seroba.csv
-    """
-
-    stub:
-    """
-    echo "sample_id,tool,predicted_serotype" > ${sample_id}.seroba.csv
-    echo "${sample_id},SeroBA,19F" >> ${sample_id}.seroba.csv
+    echo "sample_id,tool,predicted_serotype" > seroba_parsed.csv
+    echo "SAMPLE001,SeroBA,19F" >> seroba_parsed.csv
     """
 }

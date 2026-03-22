@@ -23,12 +23,12 @@
 nextflow.enable.dsl = 2
 
 // ── Module imports ────────────────────────────────────────────
-include { SEROBA;           SEROBA_PARSE           } from './modules/seroba'
-include { PNEUMOKITY;       PNEUMOKITY_PARSE       } from './modules/pneumokity'
-include { PFASTER;          PFASTER_PARSE          } from './modules/pfaster'
+include { SEROBA_BATCH                             } from './modules/seroba'
+include { PNEUMOKITY_BATCH                         } from './modules/pneumokity'
+include { PFASTER_BATCH                            } from './modules/pfaster'
 include { ALLCAPS; ALLCAPS_EVAL; ALLCAPS_PARSE     } from './modules/allcaps'
-include { PNEUMOCAT;        PNEUMOCAT_PARSE        } from './modules/pneumocat'
-include { SEROCALL;         SEROCALL_PARSE         } from './modules/serocall'
+include { PNEUMOCAT_BATCH                          } from './modules/pneumocat'
+include { SEROCALL_BATCH                           } from './modules/serocall'
 include { PNEUMOTYPER;      PNEUMOTYPER_PARSE      } from './modules/pneumotyper'
 
 // ── Help message ──────────────────────────────────────────────
@@ -48,13 +48,15 @@ def helpMessage() {
       --multifasta      PATH   Multi-FASTA file to split into per-sample FASTAs
       --allcaps_model   PATH   AllCaps .pth model checkpoint
       --allcaps_repo    PATH   Path to pneumococcal-serotyping repo root
+      --precomputed     PATH   Directory of precomputed per-tool CSVs to merge
+                               (format: sample_id,tool,predicted_serotype)
       --outdir          PATH   Output directory [default: results]
 
     Tool toggles (set --run_<tool>=false to skip):
-      --run_seroba      [default: true]
-      --run_pneumokity  [default: true]
-      --run_pfaster     [default: true]
-      --run_allcaps     [default: true]
+      --run_seroba      [default: false]
+      --run_pneumokity  [default: false]
+      --run_pfaster     [default: false]
+      --run_allcaps     [default: false]
       --run_pneumocat   [default: false]  (placeholder)
       --run_serocall    [default: false]  (placeholder)
       --run_pneumotyper [default: false]  (placeholder)
@@ -213,34 +215,56 @@ workflow {
         ch_fasta = ch_fasta.mix(ch_split)
     }
 
-    // Collect all per-tool parsed CSVs here
+    // ── Batch manifests ──────────────────────────────────────
+    // FASTA manifest: sample_id<TAB>filename
+    ch_fasta_manifest = ch_fasta
+        .map { sid, fasta -> "${sid}\t${fasta.name}" }
+        .collectFile(name: 'fasta_manifest.tsv', newLine: true)
+
+    ch_fasta_files = ch_fasta
+        .map { sid, fasta -> fasta }
+        .collect()
+
+    // FASTQ manifest: sample_id<TAB>fq1_filename<TAB>fq2_filename
+    ch_fastq_manifest = ch_fastq
+        .map { sid, fq1, fq2 -> "${sid}\t${fq1.name}\t${fq2.name}" }
+        .collectFile(name: 'fastq_manifest.tsv', newLine: true)
+
+    ch_fastq_files = ch_fastq
+        .flatMap { sid, fq1, fq2 -> [fq1, fq2] }
+        .collect()
+
+    // ── Precomputed results ──────────────────────────────────
     ch_parsed = Channel.empty()
 
-    // ── SeroBA v2 (FASTQ) ────────────────────────────────────
-    if (params.run_seroba) {
-        SEROBA(ch_fastq)
-        SEROBA_PARSE(SEROBA.out.predictions)
-        ch_parsed = ch_parsed.mix(SEROBA_PARSE.out.parsed)
+    if (params.precomputed) {
+        ch_parsed = ch_parsed.mix(
+            Channel.fromPath("${params.precomputed}/*.csv")
+        )
     }
 
-    // ── PneumoKITy (FASTA assembly) ──────────────────────────
+    // ── SeroBA v2 (FASTQ, batch) ─────────────────────────────
+    if (params.run_seroba) {
+        SEROBA_BATCH(ch_fastq_manifest, ch_fastq_files)
+        ch_parsed = ch_parsed.mix(SEROBA_BATCH.out.parsed)
+    }
+
+    // ── PneumoKITy (FASTA, batch) ────────────────────────────
     if (params.run_pneumokity) {
         ch_pneumokity_dir = Channel.value(
             file("${projectDir}/tools/PneumoKITy")
         )
-        PNEUMOKITY(ch_fasta, ch_pneumokity_dir)
-        PNEUMOKITY_PARSE(PNEUMOKITY.out.predictions)
-        ch_parsed = ch_parsed.mix(PNEUMOKITY_PARSE.out.parsed)
+        PNEUMOKITY_BATCH(ch_fasta_manifest, ch_fasta_files, ch_pneumokity_dir)
+        ch_parsed = ch_parsed.mix(PNEUMOKITY_BATCH.out.parsed)
     }
 
-    // ── PfaSTer (FASTA) ─────────────────────────────────────
+    // ── PfaSTer (FASTA, batch) ───────────────────────────────
     if (params.run_pfaster) {
         ch_pfaster_dir = Channel.value(
             file("${projectDir}/tools/pfaster")
         )
-        PFASTER(ch_fasta, ch_pfaster_dir)
-        PFASTER_PARSE(PFASTER.out.predictions)
-        ch_parsed = ch_parsed.mix(PFASTER_PARSE.out.parsed)
+        PFASTER_BATCH(ch_fasta_manifest, ch_fasta_files, ch_pfaster_dir)
+        ch_parsed = ch_parsed.mix(PFASTER_BATCH.out.parsed)
     }
 
     // ── AllCaps (FASTA, batch mode) ──────────────────────────
@@ -260,24 +284,22 @@ workflow {
         ch_parsed = ch_parsed.mix(ALLCAPS_PARSE.out.parsed)
     }
 
-    // ── PneumoCaT (FASTQ, placeholder) ───────────────────────
+    // ── PneumoCaT (FASTQ, batch, placeholder) ────────────────
     if (params.run_pneumocat) {
-        PNEUMOCAT(ch_fastq)
-        PNEUMOCAT_PARSE(PNEUMOCAT.out.predictions)
-        ch_parsed = ch_parsed.mix(PNEUMOCAT_PARSE.out.parsed)
+        PNEUMOCAT_BATCH(ch_fastq_manifest, ch_fastq_files)
+        ch_parsed = ch_parsed.mix(PNEUMOCAT_BATCH.out.parsed)
     }
 
-    // ── SeroCall (FASTQ, placeholder) ────────────────────────
+    // ── SeroCall (FASTQ, batch, placeholder) ─────────────────
     if (params.run_serocall) {
         ch_serocall_dir = Channel.value(
             file("${projectDir}/tools/SeroCall")
         )
-        SEROCALL(ch_fastq, ch_serocall_dir)
-        SEROCALL_PARSE(SEROCALL.out.predictions)
-        ch_parsed = ch_parsed.mix(SEROCALL_PARSE.out.parsed)
+        SEROCALL_BATCH(ch_fastq_manifest, ch_fastq_files, ch_serocall_dir)
+        ch_parsed = ch_parsed.mix(SEROCALL_BATCH.out.parsed)
     }
 
-    // ── Pneumo-Typer (FASTA dir, placeholder) ────────────────
+    // ── Pneumo-Typer (FASTA dir, batch, placeholder) ─────────
     if (params.run_pneumotyper) {
         // Pneumo-Typer expects a dir of .fasta files
         ch_fasta
