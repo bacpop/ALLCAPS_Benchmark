@@ -2,6 +2,14 @@
 """Parse PneumoCaT results.xml into standardized CSV format.
 
 Usage: parse_pneumocat.py <sample_id> <results.xml>
+
+The XML looks like this:
+    <ngs_sample id="ERR10419726">
+    <workflow value="PneumoCaT" version="1.2.1"/>
+    <results>
+        <result type="Serotype" value="07C">
+        ...
+
 Outputs to stdout: sample_id,tool,predicted_serotype
 """
 import csv
@@ -14,15 +22,10 @@ def parse_pneumocat(sample_id: str, xml_path: str) -> str:
     try:
         tree = ET.parse(xml_path)
         root = tree.getroot()
-        # PneumoCaT XML: <result type="Serotype"><value>XX</value></result>
-        # or <result type="Serotype Distinction"><value>XX</value></result>
-        for result_elem in root.iter("result"):
-            rtype = result_elem.get("type", "")
-            if "Serotype" in rtype:
-                val_elem = result_elem.find("value")
-                if val_elem is not None and val_elem.text:
-                    serotype = val_elem.text.strip()
-                    break
+        # Find the <result> element with type="Serotype"
+        for result in root.findall(".//result[@type='Serotype']"):
+            serotype = result.get("value", "FAILED")
+            break  # We only care about the first one
     except ET.ParseError:
         pass
     return serotype
