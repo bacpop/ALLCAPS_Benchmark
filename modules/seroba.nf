@@ -33,7 +33,7 @@ process SEROBA_BATCH {
             "\${fq1}" \\
             "\${fq2}" \\
             "\${sample_id}_result" 2>>errors.log; then
-            parse_seroba.py "\${sample_id}" "\${sample_id}_result/pred.tsv" \\
+            parse_seroba.py "\${sample_id}" "\${sample_id}_result/pred.csv" \\
                 | tail -n +2 >> seroba_parsed.csv
         else
             echo "FAILED: \${sample_id} (exit \$?)" >> errors.log

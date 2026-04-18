@@ -12,7 +12,7 @@ def parse_seroba(sample_id: str, pred_csv: str) -> str:
     serotype = "FAILED"
     with open(pred_csv) as f:
         line = f.readlines()[-1].strip()  # Read the last line of the file
-        # SeroBA v2 pred.csv format: comma-separated, second field is serotype: "Sample,Serotype,Genetic_Variant,Contamination_Status"    
+        # SeroBA v2 pred.csv format: comma-separated, second field is serotype: "Sample,Serotype,Genetic_Variant,Contamination_Status"
         parts = line.split(",")
         if len(parts) > 1:
             serotype = parts[1].strip()

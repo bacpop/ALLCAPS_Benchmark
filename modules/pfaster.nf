@@ -10,8 +10,6 @@ process PFASTER_BATCH {
     tag "pfaster_batch"
     label 'process_batch'
 
-    conda "${projectDir}/envs/pfaster.yml"
-
     publishDir "${params.outdir}/predictions", mode: 'copy'
 
     input:
