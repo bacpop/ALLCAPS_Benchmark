@@ -23,7 +23,7 @@
 nextflow.enable.dsl = 2
 
 // ── Module imports ────────────────────────────────────────────
-include { SEROBA_BATCH                             } from './modules/seroba'
+include { SEROBA_SINGLE                            } from './modules/seroba'
 include { PNEUMOKITY_BATCH                         } from './modules/pneumokity'
 include { PFASTER_BATCH                            } from './modules/pfaster'
 include { ALLCAPS; ALLCAPS_EVAL; ALLCAPS_PARSE     } from './modules/allcaps'
@@ -181,20 +181,29 @@ process BUILD_REPORT {
     path labels
 
     output:
-    path "*.csv",            emit: matrices
+    path "*.csv",                 emit: matrices
     path "*.pdf", optional: true, emit: plots
     path "benchmark_summary.tsv", emit: summary
+    path "normalization_log.tsv", emit: norm_log
 
     script:
     """
-    build_confusion_matrix.py \\
+    normalize_serotypes.py \\
         --predictions ${predictions} \\
-        --labels ${labels} \\
+        --labels      ${labels} \\
+        --out_predictions predictions_normalized.csv \\
+        --out_labels      labels_normalized.csv \\
+        --out_log         normalization_log.tsv
+
+    build_confusion_matrix.py \\
+        --predictions predictions_normalized.csv \\
+        --labels      labels_normalized.csv \\
         --outdir .
     """
 
     stub:
     """
+    printf 'step\toriginal\tnormalized\tn_rows\tnote\n' > normalization_log.tsv
     echo "tool,accuracy,f1_weighted,f1_macro" > benchmark_summary.tsv
     echo "SeroBA,0.95,0.94,0.90"            >> benchmark_summary.tsv
     """
@@ -244,10 +253,17 @@ workflow {
         )
     }
 
-    // ── SeroBA v2 (FASTQ, batch) ─────────────────────────────
+    // ── SeroBA v2 (FASTQ, per-sample parallel) ───────────────
     if (params.run_seroba) {
-        SEROBA_BATCH(ch_fastq_manifest, ch_fastq_files)
-        ch_parsed = ch_parsed.mix(SEROBA_BATCH.out.parsed)
+        SEROBA_SINGLE(ch_fastq)
+        ch_parsed = ch_parsed.mix(
+            SEROBA_SINGLE.out.row
+                .collectFile(
+                    name:    'seroba_parsed.csv',
+                    seed:    'sample_id,tool,predicted_serotype\n',
+                    newLine: true,
+                )
+        )
     }
 
     // ── PneumoKITy (FASTA, batch) ────────────────────────────

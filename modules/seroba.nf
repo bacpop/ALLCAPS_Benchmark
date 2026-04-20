@@ -1,54 +1,42 @@
 /*
  * SeroBA v2 — k-mer-based serotyping from Illumina paired reads
- * BATCH MODE: processes all samples in a single job
+ * PER-SAMPLE MODE: each sample runs as an independent Nextflow process,
+ * allowing SLURM to schedule them fully in parallel.
  *
  * Container: docker://sangerbentleygroup/seroba
- * Input:     manifest TSV (sample_id, fq1, fq2) + all FASTQ files staged flat
- * Output:    single parsed CSV for all samples
+ * Input:     tuple (sample_id, fq1, fq2)
+ * Output:    one-row CSV (no header) per sample; caller collectFiles into
+ *            seroba_parsed.csv with header seed
  */
 
-process SEROBA_BATCH {
-    tag "seroba_batch"
-    label 'process_batch'
+process SEROBA_SINGLE {
+    tag "${sample_id}"
+    label 'process_seroba'
 
     container 'docker://sangerbentleygroup/seroba'
 
-    publishDir "${params.outdir}/predictions", mode: 'copy'
-
     input:
-    path manifest
-    path fastqs
+    tuple val(sample_id), path(fq1), path(fq2)
 
     output:
-    path "seroba_parsed.csv", emit: parsed
-    path "errors.log", optional: true, emit: errors
+    path "${sample_id}.csv", emit: row
 
     script:
     """
-    echo "sample_id,tool,predicted_serotype" > seroba_parsed.csv
-    ERRORS=0
-    while IFS=\$'\\t' read -r sample_id fq1 fq2; do
-        if seroba runSerotyping \\
+    if seroba runSerotyping \\
             /seroba/database \\
-            "\${fq1}" \\
-            "\${fq2}" \\
-            "\${sample_id}_result" 2>>errors.log; then
-            parse_seroba.py "\${sample_id}" "\${sample_id}_result/pred.csv" \\
-                | tail -n +2 >> seroba_parsed.csv
-        else
-            echo "FAILED: \${sample_id} (exit \$?)" >> errors.log
-            echo "\${sample_id},SeroBA,FAILED" >> seroba_parsed.csv
-            ERRORS=\$((ERRORS + 1))
-        fi
-    done < ${manifest}
-    if [ \$ERRORS -gt 0 ]; then
-        echo "\${ERRORS} sample(s) failed — see errors.log" >&2
+            "${fq1}" \\
+            "${fq2}" \\
+            result 2>errors.log; then
+        parse_seroba.py "${sample_id}" result/pred.csv \\
+            | tail -n +2 > "${sample_id}.csv"
+    else
+        echo "${sample_id},SeroBA,FAILED" > "${sample_id}.csv"
     fi
     """
 
     stub:
     """
-    echo "sample_id,tool,predicted_serotype" > seroba_parsed.csv
-    echo "SAMPLE001,SeroBA,19F" >> seroba_parsed.csv
+    echo "${sample_id},SeroBA,19F" > "${sample_id}.csv"
     """
 }
