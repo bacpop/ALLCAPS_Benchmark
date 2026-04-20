@@ -33,6 +33,45 @@ from sklearn.metrics import (
     f1_score,
 )
 
+# ── Serogroup → member-serotype resolution ───────────────────
+# When the ground-truth label is a serogroup (coarser) and the tool predicts
+# a valid member serotype (finer), that prediction is credited as correct.
+# The reverse is NOT applied: predicting a serogroup for a specific-serotype
+# ground truth remains a false negative.
+#
+# Extend this dict as new serogroup true labels are encountered in metadata.
+SEROGROUP_MEMBERS: dict[str, set[str]] = {
+    "Serogroup 9":  {"9A", "9L", "9N", "9V"},
+    "Serogroup 24": {"24A", "24B", "24F"},
+    "Serogroup 33": {"33A", "33B", "33C", "33D", "33F"},
+    # Compound true labels from metadata — credit any specific member prediction
+    "11A/11B/11C/11D/11E/11F/11F_like": {"11A", "11B", "11C", "11D", "11E", "11F"},
+    "24B/24C/24F":                       {"24B", "24C", "24F"},
+    "33A/33E/33F":                       {"33A", "33E", "33F"},
+}
+
+
+def resolve_serogroup_labels(df: pd.DataFrame) -> pd.DataFrame:
+    """Replace serogroup true labels with the predicted serotype when the
+    prediction is a valid member of that serogroup.
+
+    Must be called per-tool after merging predictions with true labels so
+    that each tool's prediction is evaluated against its own resolved truth.
+    """
+    df = df.copy()
+    for serogroup, members in SEROGROUP_MEMBERS.items():
+        mask = (df["true_serotype"] == serogroup) & (df["predicted_serotype"].isin(members))
+        n = int(mask.sum())
+        if n:
+            df.loc[mask, "true_serotype"] = df.loc[mask, "predicted_serotype"]
+            print(
+                f"    serogroup resolution: '{serogroup}' → predicted serotype "
+                f"({n} samples credited as correct)",
+                file=sys.stderr,
+            )
+    return df
+
+
 # ── Serotype normalization ────────────────────────────────────
 # Different tools use different naming conventions. This mapping
 # normalizes common variants to a canonical form.
@@ -43,6 +82,10 @@ SEROTYPE_ALIASES = {
     "03": "3",
     "04": "4",
     "05": "5",
+    "06A": "6A",
+    "06B": "6B",
+    "06C": "6C",
+    "06D": "6D",
     "07A": "7A",
     "07B": "7B",
     "07C": "7C",
@@ -202,6 +245,7 @@ def main():
         df_tool = merged[merged["tool"] == tool].copy()
         if df_tool.empty:
             continue
+        df_tool = resolve_serogroup_labels(df_tool)
         row = evaluate_tool(df_tool, tool, args.outdir)
         summary_rows.append(row)
         print(f"{tool}: accuracy={row['accuracy']}, F1w={row['f1_weighted']}, F1m={row['f1_macro']}")
