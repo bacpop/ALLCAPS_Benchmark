@@ -1,0 +1,14 @@
+# Dependencies for the reporting step (normalize_serotypes.py +
+# build_confusion_matrix.py): pandas/numpy + scikit-learn for the metrics,
+# matplotlib for the optional confusion-matrix PDFs.
+name: report
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.8
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib

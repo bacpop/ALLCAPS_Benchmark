@@ -174,6 +174,7 @@ process BUILD_REPORT {
     tag "report"
     label 'process_low'
 
+    conda "${projectDir}/envs/report.yml"
     publishDir "${params.outdir}/report", mode: 'copy'
 
     input:
