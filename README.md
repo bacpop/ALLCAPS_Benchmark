@@ -4,15 +4,15 @@ Nextflow pipeline to benchmark multiple *S. pneumoniae* in-silico serotyping too
 
 ## Tools
 
-| Tool | Input | Execution | Status |
-|------|-------|-----------|--------|
-| **AllCaps** (ours) | FASTA (contigs) | Conda (`ebi_env`) | ✅ Implemented |
-| **SeroBA v2** | Paired FASTQ | Singularity (`sangerbentleygroup/seroba`) | ✅ Implemented |
-| **PneumoKITy** | FASTA (assembly) | Conda env | ✅ Implemented |
-| **PfaSTer** | FASTA | Conda env | ✅ Implemented |
-| **PneumoCaT** | Paired FASTQ | Bioconda (PneumoCaT) | ✅ Implemented |
-| **SeroCall** | Paired FASTQ | Clone + Conda (BWA) | ✅ Implemented |
-| **Pneumo-Typer** | FASTA directory | Conda (bioconda) | 🔲 Placeholder |
+| Tool | Input | Execution |
+|------|-------|-----------|
+| **AllCaps** (ours) | FASTA (contigs) | Conda (`ebi_env`) |
+| **SeroBA v2** | Paired FASTQ | Singularity (`sangerbentleygroup/seroba`) |
+| **PneumoKITy** | FASTA (assembly) | Conda env |
+| **PfaSTer** | FASTA | Conda env |
+| **PneumoCaT** | Paired FASTQ | Bioconda (PneumoCaT) |
+| **SeroCall** | Paired FASTQ | Clone + Conda (BWA) |
+| **Pneumo-Typer** | FASTA (assembly) | Clone + Conda (Perl/BLAST) |
 
 ## Quick Start
 
@@ -23,9 +23,12 @@ mkdir -p tools/
 git clone https://github.com/CarmenSheppard/PneumoKITy.git tools/PneumoKITy
 git clone https://github.com/pfizer-opensource/pfaster.git  tools/pfaster
 git clone https://github.com/knightjimr/SeroCall.git        tools/SeroCall
-# For placeholder tools (when ready):
-# git clone https://github.com/Xiangyang1984/Pneumo-Typer.git tools/Pneumo-Typer
+git clone https://github.com/Xiangyang1984/Pneumo-Typer.git tools/Pneumo-Typer
 ```
+
+> **Note:** The pipeline runs Pneumo-Typer with `-m F` (serotype only, MLST/cgMLST
+> skipped), so the large cgMLST datasets the upstream README mentions for the
+> git-clone install are **not** required.
 
 ### 2. Pull Singularity image (for SeroBA)
 
@@ -111,7 +114,7 @@ results/
 ├── predictions/
 │   └── all_predictions.csv          # Unified: sample_id, tool, predicted_serotype
 ├── report/
-│   ├── benchmark_summary.tsv        # Cross-tool comparison table
+│   ├── benchmark_summary.csv        # Cross-tool comparison table
 │   ├── SeroBA_confusion_matrix.csv
 │   ├── SeroBA_report.txt
 │   ├── SeroBA_confusion_matrix.pdf
@@ -148,7 +151,7 @@ serotype-benchmark/
 │   ├── allcaps.nf           # AllCaps (our tool)
 │   ├── pneumocat.nf         # PneumoCaT
 │   ├── serocall.nf          # SeroCall
-│   └── pneumotyper.nf       # Pneumo-Typer (placeholder)
+│   └── pneumotyper.nf       # Pneumo-Typer
 ├── bin/                     # Scripts (auto-added to PATH by Nextflow)
 │   ├── parse_seroba.py
 │   ├── parse_pneumokity.py
@@ -163,7 +166,8 @@ serotype-benchmark/
 ├── envs/                    # Conda environment files
 │   ├── pneumokity.yml
 │   ├── pfaster.yml
-│   └── serocall.yml
+│   ├── serocall.yml
+│   └── pneumotyper.yml
 ├── assets/
 │   └── samplesheet.csv      # Template samplesheet
 └── tools/                   # Clone external tools here (gitignored)

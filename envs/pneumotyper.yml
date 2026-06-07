@@ -1,0 +1,18 @@
+# Runtime dependencies for Pneumo-Typer (cloned into tools/Pneumo-Typer).
+# Mirrors the `run:` requirements of the upstream bioconda recipe
+# (tools/Pneumo-Typer/recipes/meta.yaml) so we can drive the cloned
+# pneumo-typer.pl directly instead of installing the packaged tool.
+name: pneumotyper
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - blast
+  - perl-gd>=2.74
+  - perl-gd-svg
+  - perl-svg>=2.87
+  - perl-lwp-protocol-https
+  - perl-bioperl-core
+  - prodigal
+  - blat

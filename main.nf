@@ -59,7 +59,7 @@ def helpMessage() {
       --run_allcaps     [default: false]
       --run_pneumocat   [default: false]
       --run_serocall    [default: false]
-      --run_pneumotyper [default: false]  (placeholder)
+      --run_pneumotyper [default: false]
 
     Profiles:
       -profile standard    Local execution
@@ -183,8 +183,8 @@ process BUILD_REPORT {
     output:
     path "*.csv",                 emit: matrices
     path "*.pdf", optional: true, emit: plots
-    path "benchmark_summary.tsv", emit: summary
-    path "normalization_log.tsv", emit: norm_log
+    path "benchmark_summary.csv", emit: summary
+    path "normalization_log.csv", emit: norm_log
 
     script:
     """
@@ -193,7 +193,7 @@ process BUILD_REPORT {
         --labels      ${labels} \\
         --out_predictions predictions_normalized.csv \\
         --out_labels      labels_normalized.csv \\
-        --out_log         normalization_log.tsv
+        --out_log         normalization_log.csv
 
     build_confusion_matrix.py \\
         --predictions predictions_normalized.csv \\
@@ -203,9 +203,9 @@ process BUILD_REPORT {
 
     stub:
     """
-    printf 'step\toriginal\tnormalized\tn_rows\tnote\n' > normalization_log.tsv
-    echo "tool,accuracy,f1_weighted,f1_macro" > benchmark_summary.tsv
-    echo "SeroBA,0.95,0.94,0.90"            >> benchmark_summary.tsv
+    printf 'step,original,normalized,n_rows,note\n' > normalization_log.csv
+    echo "tool,accuracy,f1_weighted,f1_macro" > benchmark_summary.csv
+    echo "SeroBA,0.95,0.94,0.90"            >> benchmark_summary.csv
     """
 }
 
@@ -226,22 +226,13 @@ workflow {
     }
 
     // ── Batch manifests ──────────────────────────────────────
-    // FASTA manifest: sample_id<TAB>filename
+    // FASTA manifest: sample_id,filename
     ch_fasta_manifest = ch_fasta
-        .map { sid, fasta -> "${sid}\t${fasta.name}" }
-        .collectFile(name: 'fasta_manifest.tsv', newLine: true)
+        .map { sid, fasta -> "${sid},${fasta.name}" }
+        .collectFile(name: 'fasta_manifest.csv', newLine: true)
 
     ch_fasta_files = ch_fasta
         .map { sid, fasta -> fasta }
-        .collect()
-
-    // FASTQ manifest: sample_id<TAB>fq1_filename<TAB>fq2_filename
-    ch_fastq_manifest = ch_fastq
-        .map { sid, fq1, fq2 -> "${sid}\t${fq1.name}\t${fq2.name}" }
-        .collectFile(name: 'fastq_manifest.tsv', newLine: true)
-
-    ch_fastq_files = ch_fastq
-        .flatMap { sid, fq1, fq2 -> [fq1, fq2] }
         .collect()
 
     // ── Precomputed results ──────────────────────────────────
@@ -330,18 +321,12 @@ workflow {
         )
     }
 
-    // ── Pneumo-Typer (FASTA dir, batch, placeholder) ─────────
+    // ── Pneumo-Typer (FASTA, batch) ──────────────────────────
     if (params.run_pneumotyper) {
-        // Pneumo-Typer expects a dir of .fasta files
-        ch_fasta
-            .map { sid, fasta -> fasta }
-            .collect()
-            .map { fastas ->
-                // Stage all fastas into a directory
-                fastas
-            }
-            .set { ch_pneumotyper_dir }
-        PNEUMOTYPER(ch_pneumotyper_dir)
+        ch_pneumotyper_dir = Channel.value(
+            file("${projectDir}/tools/Pneumo-Typer")
+        )
+        PNEUMOTYPER(ch_fasta_manifest, ch_fasta_files, ch_pneumotyper_dir)
         PNEUMOTYPER_PARSE(PNEUMOTYPER.out.predictions)
         ch_parsed = ch_parsed.mix(PNEUMOTYPER_PARSE.out.parsed)
     }
