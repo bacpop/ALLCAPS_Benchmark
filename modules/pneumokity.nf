@@ -27,7 +27,7 @@ process PNEUMOKITY_BATCH {
     """
     echo "sample_id,tool,predicted_serotype" > pneumokity_parsed.csv
     ERRORS=0
-    while IFS=\$'\\t' read -r sample_id fasta_name; do
+    while IFS=, read -r sample_id fasta_name; do
         if python ${pneumokity_dir}/pneumokity.py pure \\
             -a "\${fasta_name}" \\
             -o "\${sample_id}_output" \\

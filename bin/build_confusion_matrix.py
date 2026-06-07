@@ -17,7 +17,7 @@ Outputs (per tool):
     <tool>_confusion_matrix.pdf  (if matplotlib available)
 
 Aggregated:
-    benchmark_summary.tsv
+    benchmark_summary.csv
 """
 
 import argparse
@@ -227,7 +227,7 @@ def main():
         print("WARNING: No matching samples between predictions and labels.", file=sys.stderr)
         # Still create empty summary
         pd.DataFrame(columns=["tool", "n_samples", "n_classes", "accuracy", "f1_weighted", "f1_macro"]).to_csv(
-            os.path.join(args.outdir, "benchmark_summary.tsv"), sep="\t", index=False
+            os.path.join(args.outdir, "benchmark_summary.csv"), index=False
         )
         return
 
@@ -252,8 +252,8 @@ def main():
 
     # Write summary
     summary_df = pd.DataFrame(summary_rows)
-    summary_path = os.path.join(args.outdir, "benchmark_summary.tsv")
-    summary_df.to_csv(summary_path, sep="\t", index=False)
+    summary_path = os.path.join(args.outdir, "benchmark_summary.csv")
+    summary_df.to_csv(summary_path, index=False)
     print(f"\nSummary written to: {summary_path}")
 
 

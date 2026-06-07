@@ -20,7 +20,7 @@ True-label normalizations (notation variants for the same serotype):
 Outputs:
   predictions_normalized.csv   same columns as input, filtered/renamed
   labels_normalized.csv        same columns as input, notation unified
-  normalization_log.tsv        every change/filter applied
+  normalization_log.csv        every change/filter applied
 """
 
 import argparse
@@ -81,7 +81,7 @@ def main():
                         help="Output path for normalized predictions")
     parser.add_argument("--out_labels", default="labels_normalized.csv",
                         help="Output path for normalized true labels")
-    parser.add_argument("--out_log", default="normalization_log.tsv",
+    parser.add_argument("--out_log", default="normalization_log.csv",
                         help="Output path for normalization log")
     args = parser.parse_args()
 
@@ -162,7 +162,7 @@ def main():
         log_rows,
         columns=["step", "original", "normalized", "n_rows", "note"],
     )
-    log_df.to_csv(args.out_log, sep="\t", index=False)
+    log_df.to_csv(args.out_log, index=False)
 
     total_changes = sum(r["n_rows"] for r in log_rows)
     print(f"[normalize] done — {total_changes} rows/samples affected; "

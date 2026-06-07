@@ -25,7 +25,7 @@ process PFASTER_BATCH {
     """
     echo "sample_id,tool,predicted_serotype" > pfaster_parsed.csv
     ERRORS=0
-    while IFS=\$'\\t' read -r sample_id fasta_name; do
+    while IFS=, read -r sample_id fasta_name; do
         mkdir -p "\${sample_id}_output"
         if python ${pfaster_dir}/pfaster.py \\
             -f "\${fasta_name}" \\
