@@ -5,8 +5,8 @@
  *  Pneumococcal Serotyping Benchmark Pipeline
  * ══════════════════════════════════════════════════════════════
  *
- *  Compare SeroBA v2, PneumoKITy, PfaSTer, AllCaps, and
- *  (placeholder) PneumoCaT, SeroCall, Pneumo-Typer against a
+ *  Compare SeroBA v2, PneumoKITy, PfaSTer, AllCaps, PneumoCaT, and
+ *  (placeholder) SeroCall, Pneumo-Typer against a
  *  common test set.  Produces per-tool confusion matrices and
  *  a cross-tool comparison report.
  *
@@ -27,7 +27,7 @@ include { SEROBA_SINGLE                            } from './modules/seroba'
 include { PNEUMOKITY_BATCH                         } from './modules/pneumokity'
 include { PFASTER_BATCH                            } from './modules/pfaster'
 include { ALLCAPS; ALLCAPS_EVAL; ALLCAPS_PARSE     } from './modules/allcaps'
-include { PNEUMOCAT_BATCH                          } from './modules/pneumocat'
+include { PNEUMOCAT_SINGLE                         } from './modules/pneumocat'
 include { SEROCALL_BATCH                           } from './modules/serocall'
 include { PNEUMOTYPER;      PNEUMOTYPER_PARSE      } from './modules/pneumotyper'
 
@@ -57,7 +57,7 @@ def helpMessage() {
       --run_pneumokity  [default: false]
       --run_pfaster     [default: false]
       --run_allcaps     [default: false]
-      --run_pneumocat   [default: false]  (placeholder)
+      --run_pneumocat   [default: false]
       --run_serocall    [default: false]  (placeholder)
       --run_pneumotyper [default: false]  (placeholder)
 
@@ -301,10 +301,17 @@ workflow {
         ch_parsed = ch_parsed.mix(ALLCAPS_PARSE.out.parsed)
     }
 
-    // ── PneumoCaT (FASTQ, batch, placeholder) ────────────────
+    // ── PneumoCaT (FASTQ, per-sample parallel) ───────────────
     if (params.run_pneumocat) {
-        PNEUMOCAT_BATCH(ch_fastq_manifest, ch_fastq_files)
-        ch_parsed = ch_parsed.mix(PNEUMOCAT_BATCH.out.parsed)
+        PNEUMOCAT_SINGLE(ch_fastq)
+        ch_parsed = ch_parsed.mix(
+            PNEUMOCAT_SINGLE.out.row
+                .collectFile(
+                    name:    'pneumocat_parsed.csv',
+                    seed:    'sample_id,tool,predicted_serotype\n',
+                    newLine: true,
+                )
+        )
     }
 
     // ── SeroCall (FASTQ, batch, placeholder) ─────────────────
