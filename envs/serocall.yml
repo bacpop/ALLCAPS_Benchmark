@@ -1,0 +1,12 @@
+# Runtime dependencies for SeroCall (cloned into tools/SeroCall).
+# Upstream requires: Python 2.7+/3+, BWA >= 0.7.15.
+# (Samtools is only needed to rebuild the reference DB, which we don't do —
+#  the clone ships a pre-built BWA index in data/.)
+name: serocall
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.7
+  - bwa>=0.7.15

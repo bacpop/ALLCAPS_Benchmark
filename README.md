@@ -10,8 +10,8 @@ Nextflow pipeline to benchmark multiple *S. pneumoniae* in-silico serotyping too
 | **SeroBA v2** | Paired FASTQ | Singularity (`sangerbentleygroup/seroba`) | ✅ Implemented |
 | **PneumoKITy** | FASTA (assembly) | Conda env | ✅ Implemented |
 | **PfaSTer** | FASTA | Conda env | ✅ Implemented |
-| **PneumoCaT** | Paired FASTQ | Container (Python 2.7) | 🔲 Placeholder |
-| **SeroCall** | Paired FASTQ | Clone + BWA | 🔲 Placeholder |
+| **PneumoCaT** | Paired FASTQ | Bioconda (PneumoCaT) | ✅ Implemented |
+| **SeroCall** | Paired FASTQ | Clone + Conda (BWA) | ✅ Implemented |
 | **Pneumo-Typer** | FASTA directory | Conda (bioconda) | 🔲 Placeholder |
 
 ## Quick Start
@@ -22,8 +22,8 @@ Nextflow pipeline to benchmark multiple *S. pneumoniae* in-silico serotyping too
 mkdir -p tools/
 git clone https://github.com/CarmenSheppard/PneumoKITy.git tools/PneumoKITy
 git clone https://github.com/pfizer-opensource/pfaster.git  tools/pfaster
+git clone https://github.com/knightjimr/SeroCall.git        tools/SeroCall
 # For placeholder tools (when ready):
-# git clone https://github.com/knightjimr/SeroCall.git       tools/SeroCall
 # git clone https://github.com/Xiangyang1984/Pneumo-Typer.git tools/Pneumo-Typer
 ```
 
@@ -146,8 +146,8 @@ serotype-benchmark/
 │   ├── pneumokity.nf        # PneumoKITy
 │   ├── pfaster.nf           # PfaSTer
 │   ├── allcaps.nf           # AllCaps (our tool)
-│   ├── pneumocat.nf         # PneumoCaT (placeholder)
-│   ├── serocall.nf          # SeroCall (placeholder)
+│   ├── pneumocat.nf         # PneumoCaT
+│   ├── serocall.nf          # SeroCall
 │   └── pneumotyper.nf       # Pneumo-Typer (placeholder)
 ├── bin/                     # Scripts (auto-added to PATH by Nextflow)
 │   ├── parse_seroba.py
@@ -162,7 +162,8 @@ serotype-benchmark/
 │   └── build_confusion_matrix.py
 ├── envs/                    # Conda environment files
 │   ├── pneumokity.yml
-│   └── pfaster.yml
+│   ├── pfaster.yml
+│   └── serocall.yml
 ├── assets/
 │   └── samplesheet.csv      # Template samplesheet
 └── tools/                   # Clone external tools here (gitignored)

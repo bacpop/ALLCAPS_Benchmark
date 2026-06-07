@@ -28,7 +28,7 @@ include { PNEUMOKITY_BATCH                         } from './modules/pneumokity'
 include { PFASTER_BATCH                            } from './modules/pfaster'
 include { ALLCAPS; ALLCAPS_EVAL; ALLCAPS_PARSE     } from './modules/allcaps'
 include { PNEUMOCAT_SINGLE                         } from './modules/pneumocat'
-include { SEROCALL_BATCH                           } from './modules/serocall'
+include { SEROCALL_SINGLE                          } from './modules/serocall'
 include { PNEUMOTYPER;      PNEUMOTYPER_PARSE      } from './modules/pneumotyper'
 
 // ── Help message ──────────────────────────────────────────────
@@ -58,7 +58,7 @@ def helpMessage() {
       --run_pfaster     [default: false]
       --run_allcaps     [default: false]
       --run_pneumocat   [default: false]
-      --run_serocall    [default: false]  (placeholder)
+      --run_serocall    [default: false]
       --run_pneumotyper [default: false]  (placeholder)
 
     Profiles:
@@ -314,13 +314,20 @@ workflow {
         )
     }
 
-    // ── SeroCall (FASTQ, batch, placeholder) ─────────────────
+    // ── SeroCall (FASTQ, per-sample parallel) ────────────────
     if (params.run_serocall) {
         ch_serocall_dir = Channel.value(
             file("${projectDir}/tools/SeroCall")
         )
-        SEROCALL_BATCH(ch_fastq_manifest, ch_fastq_files, ch_serocall_dir)
-        ch_parsed = ch_parsed.mix(SEROCALL_BATCH.out.parsed)
+        SEROCALL_SINGLE(ch_fastq, ch_serocall_dir)
+        ch_parsed = ch_parsed.mix(
+            SEROCALL_SINGLE.out.row
+                .collectFile(
+                    name:    'serocall_parsed.csv',
+                    seed:    'sample_id,tool,predicted_serotype\n',
+                    newLine: true,
+                )
+        )
     }
 
     // ── Pneumo-Typer (FASTA dir, batch, placeholder) ─────────
