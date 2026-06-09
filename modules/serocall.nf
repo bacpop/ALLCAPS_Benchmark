@@ -33,14 +33,20 @@ process SEROCALL_SINGLE {
 
     script:
     """
-    if ${serocall_dir}/serocall \\
-            -t ${task.cpus} \\
-            -o "${sample_id}" \\
-            "${fq1}" \\
-            "${fq2}" 2>errors.log; then
+    # NOTE: the serocall wrapper exits 0 even when the internal serocall.py
+    # quantification step fails, so we can't rely on its exit code. Instead we
+    # check that the _calls.txt output was actually produced.
+    ${serocall_dir}/serocall \\
+        -t ${task.cpus} \\
+        -o "${sample_id}" \\
+        "${fq1}" \\
+        "${fq2}" 2>errors.log || true
+
+    if [ -s "${sample_id}_calls.txt" ]; then
         parse_serocall.py "${sample_id}" "${sample_id}_calls.txt" \\
             | tail -n +2 > "${sample_id}.csv"
     else
+        echo "MISSING_CALLS: ${sample_id} — see errors.log" >&2
         echo "${sample_id},SeroCall,FAILED" > "${sample_id}.csv"
     fi
     """

@@ -1,5 +1,8 @@
 # Runtime dependencies for SeroCall (cloned into tools/SeroCall).
-# Upstream requires: Python 2.7+/3+, BWA >= 0.7.15.
+# NOTE: despite the README claiming Python 2.7+/3+ support, the bundled
+# serocall.py uses Python-2-only `print` statements, so it must run under
+# Python 2.7 (bincounts.py is py3-clean, but serocall.py is not). Pinning
+# python=2.7 here; serocall.py only needs the stdlib.
 # (Samtools is only needed to rebuild the reference DB, which we don't do —
 #  the clone ships a pre-built BWA index in data/.)
 name: serocall
@@ -8,5 +11,5 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - python>=3.7
+  - python=2.7
   - bwa>=0.7.15
