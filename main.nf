@@ -25,7 +25,7 @@ nextflow.enable.dsl = 2
 // ── Module imports ────────────────────────────────────────────
 include { SEROBA_SINGLE                            } from './modules/seroba'
 include { PNEUMOKITY_BATCH                         } from './modules/pneumokity'
-include { PFASTER_BATCH                            } from './modules/pfaster'
+include { PFASTER_SINGLE                           } from './modules/pfaster'
 include { ALLCAPS; ALLCAPS_EVAL; ALLCAPS_PARSE     } from './modules/allcaps'
 include { PNEUMOCAT_SINGLE                         } from './modules/pneumocat'
 include { SEROCALL_SINGLE                          } from './modules/serocall'
@@ -267,13 +267,20 @@ workflow {
         ch_parsed = ch_parsed.mix(PNEUMOKITY_BATCH.out.parsed)
     }
 
-    // ── PfaSTer (FASTA, batch) ───────────────────────────────
+    // ── PfaSTer (FASTA, per-sample parallel) ─────────────────
     if (params.run_pfaster) {
         ch_pfaster_dir = Channel.value(
             file("${projectDir}/tools/pfaster")
         )
-        PFASTER_BATCH(ch_fasta_manifest, ch_fasta_files, ch_pfaster_dir)
-        ch_parsed = ch_parsed.mix(PFASTER_BATCH.out.parsed)
+        PFASTER_SINGLE(ch_fasta, ch_pfaster_dir)
+        ch_parsed = ch_parsed.mix(
+            PFASTER_SINGLE.out.row
+                .collectFile(
+                    name:    'pfaster_parsed.csv',
+                    seed:    'sample_id,tool,predicted_serotype\n',
+                    newLine: true,
+                )
+        )
     }
 
     // ── AllCaps (FASTA, batch mode) ──────────────────────────

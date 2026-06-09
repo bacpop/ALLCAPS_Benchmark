@@ -1,51 +1,51 @@
 /*
  * PfaSTer — FASTA-based serotype calling (Pfizer)
- * BATCH MODE: processes all samples in a single job
+ * PER-SAMPLE MODE: each sample runs as an independent Nextflow process,
+ * allowing SLURM to schedule them fully in parallel.
  *
- * Input:  manifest TSV + all FASTA files staged flat
- * Install: conda env from their environment.yml
+ * Install: conda env from envs/pfaster.yml (mirrors their environment.yml).
+ * The repo is cloned into tools/pfaster and passed in as `pfaster_dir`.
+ *
+ * Input:   tuple (sample_id, fasta)
+ * Output:  one-row CSV (no header) per sample; caller collectFiles into
+ *          pfaster_parsed.csv with header seed.
+ *
+ * Logging: pfaster.py runs unbuffered (PYTHONUNBUFFERED / -u) and its
+ * stdout+stderr flow to the task's .command.out/.command.err so failures are
+ * actually inspectable in the work dir (buffered output was previously lost
+ * when a batch job was killed).
  */
 
-process PFASTER_BATCH {
-    tag "pfaster_batch"
-    label 'process_batch'
+process PFASTER_SINGLE {
+    tag "${sample_id}"
+    label 'process_pfaster'
 
-    publishDir "${params.outdir}/predictions", mode: 'copy'
+    conda "${projectDir}/envs/pfaster.yml"
 
     input:
-    path manifest
-    path fastas
+    tuple val(sample_id), path(fasta)
     path pfaster_dir
 
     output:
-    path "pfaster_parsed.csv", emit: parsed
-    path "errors.log", optional: true, emit: errors
+    path "${sample_id}.csv", emit: row
 
     script:
     """
-    echo "sample_id,tool,predicted_serotype" > pfaster_parsed.csv
-    ERRORS=0
-    while IFS=, read -r sample_id fasta_name; do
-        mkdir -p "\${sample_id}_output"
-        if python ${pfaster_dir}/pfaster.py \\
-            -f "\${fasta_name}" \\
-            -o "\${sample_id}_output" 2>>errors.log; then
-            parse_pfaster.py "\${sample_id}" "\${sample_id}_output" \\
-                | tail -n +2 >> pfaster_parsed.csv
-        else
-            echo "FAILED: \${sample_id} (exit \$?)" >> errors.log
-            echo "\${sample_id},PfaSTer,FAILED" >> pfaster_parsed.csv
-            ERRORS=\$((ERRORS + 1))
-        fi
-    done < ${manifest}
-    if [ \$ERRORS -gt 0 ]; then
-        echo "\${ERRORS} sample(s) failed — see errors.log" >&2
+    export PYTHONUNBUFFERED=1
+    mkdir -p "${sample_id}_output"
+    if python -u ${pfaster_dir}/pfaster.py \\
+            -f "${fasta}" \\
+            -o "${sample_id}_output"; then
+        parse_pfaster.py "${sample_id}" "${sample_id}_output" \\
+            | tail -n +2 > "${sample_id}.csv"
+    else
+        echo "PfaSTer failed for ${sample_id} (exit \$?)" >&2
+        echo "${sample_id},PfaSTer,FAILED" > "${sample_id}.csv"
     fi
     """
 
     stub:
     """
-    echo "sample_id,tool,predicted_serotype" > pfaster_parsed.csv
-    echo "SAMPLE001,PfaSTer,19F" >> pfaster_parsed.csv
+    echo "${sample_id},PfaSTer,19F" > "${sample_id}.csv"
     """
 }
