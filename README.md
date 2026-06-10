@@ -129,6 +129,33 @@ results/
 └── trace.txt
 ```
 
+## Compute Benchmark
+
+Per-tool compute cost on the GPS test set (**5,757 samples**, SLURM executor),
+derived from each run's Nextflow `trace.txt`:
+
+| Tool | Execution | Time / query | Peak RSS |
+|------|-----------|-------------:|---------:|
+| **PneumoKITy** | batch | 2.1 s | 109 MB † |
+| **Pneumo-Typer** | batch | 5.4 s | 30.9 GB † |
+| **PfaSTer** | per-sample | 12.6 s | 102 MB |
+| **SeroCall** | per-sample | 124.6 s | 290 MB |
+| **SeroBA** | per-sample | 130.6 s | 1.41 GB |
+| **PneumoCaT** | per-sample | 368.2 s | 1.27 GB |
+
+- **Time / query** is task `realtime` (actual execution, excluding SLURM queue
+  wait). For *per-sample* tools it is the mean over all sample tasks; for *batch*
+  tools it is the single batch `realtime` divided by the number of samples.
+- **Peak RSS** is the mean resident memory per sample task. † For the *batch*
+  tools there is one task, so this is the footprint of the **whole batch** of all
+  samples, not a per-sample figure.
+
+Regenerate the table from any results directory of tool subdirs:
+
+```bash
+python3 bin/report_resources.py results/gps-benchmark
+```
+
 ## Adding a New Tool
 
 1. Create `modules/newtool.nf` with a process that runs the tool and a `_PARSE` process
@@ -162,7 +189,8 @@ serotype-benchmark/
 │   ├── parse_pneumotyper.py
 │   ├── collect_predictions.py
 │   ├── split_multifasta.py
-│   └── build_confusion_matrix.py
+│   ├── build_confusion_matrix.py
+│   └── report_resources.py     # Per-tool time & RAM from trace.txt
 ├── envs/                    # Conda environment files
 │   ├── pneumokity.yml
 │   ├── pfaster.yml
