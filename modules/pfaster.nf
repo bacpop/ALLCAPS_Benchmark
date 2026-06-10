@@ -33,6 +33,12 @@ process PFASTER_SINGLE {
     """
     export PYTHONUNBUFFERED=1
     mkdir -p "${sample_id}_output"
+    # pfaster.py opens its references (ref/, model/) via paths relative to the
+    # CWD, assuming it is run from the repo root. Under Nextflow the CWD is this
+    # task dir, so expose those dirs here without cd-ing into the (read-only)
+    # install — pfaster also writes scratch files into the CWD.
+    ln -sf "${pfaster_dir}/ref" ref
+    ln -sf "${pfaster_dir}/model" model
     if python -u ${pfaster_dir}/pfaster.py \\
             -f "${fasta}" \\
             -o "${sample_id}_output"; then

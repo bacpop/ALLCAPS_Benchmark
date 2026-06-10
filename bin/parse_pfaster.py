@@ -8,7 +8,6 @@ Usage: parse_pfaster.py <sample_id> <output_dir>
 Outputs to stdout: sample_id,tool,predicted_serotype
 """
 import csv
-import glob
 import os
 import sys
 
@@ -16,32 +15,13 @@ import sys
 def parse_pfaster(sample_id: str, output_dir: str) -> str:
     serotype = "FAILED"
 
-    # Strategy 1: look for CSV/TSV files in output dir
-    for pattern in ("*.csv", "*.tsv", "*.txt"):
-        for fpath in glob.glob(os.path.join(output_dir, pattern)):
-            with open(fpath) as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    # Try to find serotype in the line
-                    if "Serotype" in line and ":" in line:
-                        serotype = line.split(":")[-1].strip()
-                        return serotype
-                    # Try CSV parse: assume first column after header
-                    parts = line.split(",")
-                    if len(parts) >= 2 and parts[0].strip().lower() != "serotype":
-                        serotype = parts[0].strip()
-                        return serotype
-
-    # Strategy 2: look for console-style output captured to file
-    result_file = os.path.join(output_dir, "result.txt")
+    result_file = os.path.join(output_dir, "prediction.txt")
     if os.path.exists(result_file):
         with open(result_file) as f:
-            for line in f:
-                if "Serotype" in line:
-                    serotype = line.split(":")[-1].strip()
-                    return serotype
+            lines = [ln.strip() for ln in f]
+        if len(lines) >= 2 and lines[1]:
+            if lines[1] not in ["not typed", "NA"]:
+                serotype = lines[1]
 
     return serotype
 
