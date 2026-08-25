@@ -3,10 +3,13 @@ name: pfaster
 channels:
   - conda-forge
   - bioconda
-  - defaults
 dependencies:
-  - python>=3.7
-  - numpy
-  - pandas
-  - scikit-learn
-  - biopython
+  - python=3.10
+  - numpy=1.23.*
+  - scipy=1.9.*
+  - pandas=1.4.*
+  - scikit-learn=1.1.1
+  - biopython=1.79
+  - mmh3=3.0.0
+  - screed=1.0.4
+  - blast=2.13.*
