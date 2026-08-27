@@ -13,7 +13,7 @@ process SEROBA_SINGLE {
     tag "${sample_id}"
     label 'process_seroba'
 
-    container 'docker://sangerbentleygroup/seroba'
+    container 'docker://sangerbentleygroup/seroba:2.0.6'
 
     input:
     tuple val(sample_id), path(fq1), path(fq2)
